@@ -13,7 +13,8 @@ class Splash extends StatefulWidget {
 
 class _SplashState extends State<Splash> {
   int activeIndex = 0;
-  Duration _animationDuration = Duration(milliseconds: 300);
+  Duration _animationDuration = Duration(milliseconds: 250);
+  Color dominantColor = primary;
 
   final List<ViewModel> screens = [
     ViewModel(
@@ -29,10 +30,18 @@ class _SplashState extends State<Splash> {
     ViewModel(
       image: AssetImage('assets/images/general_knowledge.jpeg'),
       title: 'General Knowledge',
-      description: 'What if one apple kissed another?',
+      description: 'Why is an apple called, well, "an apple"?',
     ),
   ];
+
   Timer _timer;
+
+  Future<void> _setDominantColor() async {
+    Color color = await screens[activeIndex].color;
+    setState(() {
+      dominantColor = color;
+    });
+  }
 
   @override
   void initState() {
@@ -40,6 +49,7 @@ class _SplashState extends State<Splash> {
       setState(() {
         activeIndex = activeIndex >= screens.length - 1 ? 0 : activeIndex + 1;
       });
+      _setDominantColor();
     });
     super.initState();
   }
@@ -71,15 +81,14 @@ class _SplashState extends State<Splash> {
               duration: _animationDuration,
               height: double.infinity,
               decoration: BoxDecoration(
-                  color: Colors.white,
                   gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      screens[activeIndex].color.withOpacity(0.95),
-                      primary.withOpacity(0.4),
-                    ],
-                  )),
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  dominantColor.withOpacity(0.95),
+                  primary.withOpacity(0.4),
+                ],
+              )),
             ),
             Column(
               children: <Widget>[
@@ -147,6 +156,7 @@ class _SplashState extends State<Splash> {
                   ),
                 ),
                 SplashBottomAction(
+                  length: screens.length,
                   activeIndex: activeIndex,
                 ),
               ],
@@ -162,14 +172,12 @@ class ViewModel {
   final AssetImage image;
   final String title;
   final String description;
-
   PaletteGenerator _paletteGenerator;
-  ViewModel({this.image, this.title, this.description}) {
-    PaletteGenerator.fromImageProvider(this.image)
-        .then((generator) => _paletteGenerator = generator);
-  }
+  ViewModel({this.image, this.title, this.description});
 
-  Color get color {
-    return _paletteGenerator?.darkVibrantColor?.color ?? primary;
+  Future<Color> get color async {
+    if (_paletteGenerator == null)
+      _paletteGenerator = await PaletteGenerator.fromImageProvider(this.image);
+    return _paletteGenerator.darkVibrantColor.color;
   }
 }

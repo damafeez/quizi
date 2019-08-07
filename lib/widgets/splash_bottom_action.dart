@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:quiz/resources/colors.dart';
 import 'package:quiz/resources/sizes.dart';
+import 'package:quiz/screens/home.dart';
 
 class SplashBottomAction extends StatelessWidget {
   final int activeIndex;
-
-  const SplashBottomAction({Key key, this.activeIndex = 0}) : super(key: key);
+  final int length;
+  const SplashBottomAction({Key key, @required this.length, this.activeIndex = 0}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -14,14 +15,16 @@ class SplashBottomAction extends StatelessWidget {
         SizedBox(
           width: AppSpace.sm,
         ),
-        SwipeIndicator(isActive: activeIndex == 0),
-        SwipeIndicator(isActive: activeIndex == 1),
-        SwipeIndicator(isActive: activeIndex == 2),
+        for(int i = 0; i < length; i++) SwipeIndicator(isActive: activeIndex == i),
         Expanded(
           child: Container(),
         ),
         InkWell(
-          onTap: () {},
+          // TODO: add skipped state to shared preference
+          onTap: () {
+            Navigator.pushReplacement(
+                context, MaterialPageRoute(builder: (context) => Home()));
+          },
           child: Container(
             color: primary,
             padding: EdgeInsets.symmetric(
