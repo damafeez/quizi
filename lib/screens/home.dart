@@ -1,9 +1,12 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:quiz/data/fixtures/categories.dart';
+import 'package:quiz/data/models/category.dart';
 import 'package:quiz/resources/colors.dart';
 import 'package:quiz/resources/sizes.dart';
-import 'package:quiz/screens/splash.dart';
+import 'package:quiz/screens/questions.dart';
+import 'package:toast/toast.dart';
 
 class Home extends StatefulWidget {
   @override
@@ -11,7 +14,9 @@ class Home extends StatefulWidget {
 }
 
 class _HomeState extends State<Home> {
-  final AssetImage defaultBackground = AssetImage('assets/images/science.png');
+  final int categoriesHalfIndex = (categories.length / 2).floor();
+  final int categoriesLimit = 5;
+  Color backgroundColor = Color(0xff0093cc);
   TimerType _timerType = TimerType.interval;
 
   @override
@@ -25,23 +30,72 @@ class _HomeState extends State<Home> {
     });
   }
 
+  List<Category> get selectedCategories {
+    return categories.where((category) => category.isSelected).toList();
+  }
+
+  bool get noCategoriesSelected {
+    return selectedCategories.length <= 0;
+  }
+  List<CategoryChip> _buildCategoriesRow({int start = 0, int end}) {
+    List<CategoryChip> categoryChips = [];
+    for (int i = start; i < end; i++)
+      categoryChips.add(
+        CategoryChip(
+          key: Key(categories[i].title),
+          category: categories[i],
+          onTap: () {
+            if (selectedCategories.length >= categoriesLimit && !categories[i].isSelected) {
+              Toast.show('You can\'t select more than $categoriesLimit categories', context, duration: 3);
+              return;
+            }
+            setState(() {
+              categories[i].isSelected = !categories[i].isSelected;
+              if (categories[i].color != null && categories[i].isSelected)
+                backgroundColor = categories[i].color;
+            });
+          },
+        ),
+      );
+    return categoryChips;
+  }
+
+  void setCategorySelection(bool isSelected, int index) {
+    categories[index]?.isSelected = isSelected;
+    setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: DefaultTextStyle(
-        style: TextStyle(color: primaryText, fontFamily: 'Comfortaa'),
+        style: TextStyle(color: secondaryText, fontFamily: 'Comfortaa'),
         child: Container(
           child: Stack(
             children: <Widget>[
-              Container(
+              Positioned(
+                top: 50.0,
+                left: 20.0,
+                child: Image.asset(
+                  'assets/images/logo.png',
+                  width: 100,
+                  color: Colors.grey,
+                ),
+              ),
+              AnimatedContainer(
+                duration: Duration(milliseconds: 300),
+                height: double.infinity,
                 decoration: BoxDecoration(
-                  color: Colors.transparent,
-                  image: DecorationImage(
-                    fit: BoxFit.cover,
-                    image: defaultBackground,
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      backgroundColor.withOpacity(0.85),
+                      Color(0xff5b7fc9).withOpacity(0.7),
+                    ],
+                    stops: [0.45, 1.0],
                   ),
                 ),
-                height: double.infinity,
               ),
               Container(
                 child: Column(
@@ -65,18 +119,18 @@ class _HomeState extends State<Home> {
                       padding: EdgeInsets.symmetric(
                           horizontal: AppSpace.xs, vertical: AppSpace.xs),
                       child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
                           Row(
-                            children: <Widget>[
-                              for (int i = 0; i < 10; i++)
-                                CategoryChip(category: 'category'),
-                            ],
+                            children: _buildCategoriesRow(
+                              end: categoriesHalfIndex,
+                            ),
                           ),
                           Row(
-                            children: <Widget>[
-                              for (int i = 0; i < 10; i++)
-                                CategoryChip(category: 'category'),
-                            ],
+                            children: _buildCategoriesRow(
+                              start: categoriesHalfIndex,
+                              end: categories.length,
+                            ),
                           ),
                         ],
                       ),
@@ -105,36 +159,42 @@ class _HomeState extends State<Home> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: <Widget>[
                             Text(
-                              'Selected Categories',
-                              style: TextStyle(fontSize: AppFont.md),
+                              noCategoriesSelected
+                                  ? 'No Categories selected'
+                                  : 'Selected Categories (${selectedCategories.length})',
+                              style: TextStyle(
+                                fontSize: AppFont.md,
+                                color: noCategoriesSelected ? secondary : null,
+                              ),
                             ),
                             SizedBox(
-                              height: AppSpace.xs,
+                              height: AppSpace.xs - 5,
                             ),
                             Wrap(
                               spacing: AppSpace.xs,
-                              children: <Widget>[
-                                for (int i = 0; i < 4; i++)
-                                  Chip(
-                                    label: Text('Education'),
-                                    elevation: 10.0,
-                                    shadowColor: Colors.black45,
-                                    onDeleted: () {},
-                                    deleteIconColor:
-                                        Colors.red.withOpacity(0.7),
-                                  ),
-                              ],
+                              children: selectedCategories
+                                  .map((category) => Chip(
+                                        key: Key(category.title),
+                                        label: Text(category.title),
+                                        elevation: 2.0,
+                                        shadowColor: Colors.black45,
+                                        onDeleted: () {
+                                          category.isSelected = false;
+                                          setState(() {});
+                                        },
+                                        deleteIconColor:
+                                            Colors.red.withOpacity(0.7),
+                                      ))
+                                  .toList(),
                             ),
                             SizedBox(
-                              height: AppSpace.md,
+                              height: AppSpace.lg + 5,
                             ),
                             Text(
                               'Timer Type',
                               style: TextStyle(fontSize: AppFont.md),
                             ),
-                            SizedBox(
-                              height: AppSpace.xs,
-                            ),
+                            SizedBox(height: AppSpace.xs - 5),
                             Row(
                               children: <Widget>[
                                 InkWell(
@@ -188,9 +248,19 @@ class _HomeState extends State<Home> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {},
+        onPressed: noCategoriesSelected
+            ? null
+            : () {
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => Questions(
+                              selectedCategories: selectedCategories,
+                              timerType: _timerType,
+                            )));
+              },
         child: Icon(Icons.check),
-        backgroundColor: primary,
+        backgroundColor: noCategoriesSelected ? Colors.grey : backgroundColor,
         disabledElevation: 0,
       ),
     );
@@ -198,33 +268,33 @@ class _HomeState extends State<Home> {
 }
 
 class CategoryChip extends StatelessWidget {
-  final String category;
-
-  const CategoryChip({Key key, this.category}) : super(key: key);
+  final Category category;
+  final Function onTap;
+  const CategoryChip({Key key, this.category, this.onTap}) : super(key: key);
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: () {
-        Navigator.pushReplacement(
-            context, MaterialPageRoute(builder: (context) => Splash()));
-      },
-      child: Container(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: Duration(milliseconds: 500),
         padding: EdgeInsets.symmetric(
             vertical: AppSpace.sm, horizontal: AppSpace.md),
         margin: EdgeInsets.only(right: AppSpace.xs, top: AppSpace.xs),
         decoration: BoxDecoration(
-          color: Colors.white30,
+          color: category.isSelected
+              ? (secondaryText).withOpacity(0.3)
+              : Colors.white30,
           borderRadius: BorderRadius.circular(30.0),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: 15,
+              color: Colors.black.withOpacity(0.15),
+              blurRadius: 10,
               offset: Offset(1, 1),
             ),
           ],
         ),
         child: Text(
-          category,
+          category.title,
           style: TextStyle(color: Colors.white70),
         ),
       ),
