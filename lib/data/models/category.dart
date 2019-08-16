@@ -6,7 +6,8 @@ class Category {
   final String title;
   final String description;
   final Color color;
+  final int id;
   bool isSelected = false;
 
-  Category({this.color, this.image, this.title, this.description});
+  Category({@required this.title, this.id, this.color, this.image, this.description});
 }

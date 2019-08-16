@@ -1,27 +1,59 @@
+import 'dart:convert';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:quiz/data/models/category.dart';
+import 'package:quiz/data/models/question.dart';
 import 'package:quiz/resources/colors.dart';
 import 'package:quiz/resources/sizes.dart';
 import 'package:quiz/screens/home.dart';
+import 'package:quiz/widgets/answer_chip.dart';
 
 class Questions extends StatefulWidget {
-  final List<Category> selectedCategories;
+  final List<Category> categories;
   final TimerType timerType;
 
   const Questions(
-      {Key key, @required this.selectedCategories, @required this.timerType})
+      {Key key, @required this.categories, @required this.timerType})
       : super(key: key);
   @override
   _QuestionsState createState() => _QuestionsState();
 }
 
 class _QuestionsState extends State<Questions> {
-  Color backgroundColor = Color(0xff0093cc);
+  final Color backgroundColor = Color(0xff0093cc);
+  final int questionsCount = 15;
+  final String baseURL = 'https://opentdb.com/api.php';
+  final List<String> alphabets = ['A', 'B', 'C', 'D', 'E', 'F'];
+  final List<Question> questions = [];
+  List<Category> categories = [];
+
+  @override
+  void initState() {
+    categories = widget.categories.toList();
+    final int questionCountPerCall =
+        (questionsCount / widget.categories.length).floor();
+    for (final Category category in categories) {
+      http
+          .get(
+              '$baseURL?amount=$questionCountPerCall&category=${category.id}&difficulty=easy')
+          .then((response) {
+        List results = json.decode(response.body)['results'];
+        for (final Map<String, dynamic> result in results) {
+          setState(() {
+            questions.add(Question.fromJson(result));
+          });
+        }
+      });
+    }
+    super.initState();
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (questions.length == 0) return Container();
+    Question question = questions[0];
     return Scaffold(
       body: DefaultTextStyle(
         style: TextStyle(color: secondaryText, fontFamily: 'Comfortaa'),
@@ -41,7 +73,7 @@ class _QuestionsState extends State<Questions> {
                           child: IconButton(
                             color: secondaryText,
                             icon: Icon(
-                              Icons.arrow_back_ios,
+                              Icons.arrow_back,
                             ),
                             onPressed: () => Navigator.pop(context),
                           ),
@@ -52,44 +84,57 @@ class _QuestionsState extends State<Questions> {
                       height: AppSpace.md,
                     ),
                     Text(
-                      'What is the best name for a cat who has no name before he met his human friend?',
+                      question.question,
                       style: TextStyle(
                           fontSize: AppFont.md, fontWeight: FontWeight.bold),
                     ),
                     SizedBox(
                       height: AppSpace.lg,
                     ),
-                    Container(
-                      padding: EdgeInsets.all(5.0),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(10),
-                        color: Colors.white,
+                    for (int i = 0; i < question.answers.length; i++)
+                      AnswerChip(
+                        alphabet: alphabets[i],
+                        answer: question.answers[i],
                       ),
-                      child: Row(
-                        children: <Widget>[
-                          Container(
-                            width: 48,
-                            height: 58,
-                            decoration: BoxDecoration(
-                              color: primary,
-                              borderRadius: BorderRadius.circular(10),
+                    Expanded(
+                      child: Center(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: <Widget>[
+                            IconButton(
+                              onPressed: () {},
+                              icon: Icon(Icons.chevron_left),
                             ),
-                            child: Center(
-                              child: Text(
-                                'A',
-                                style: TextStyle(
-                                    color: Colors.white54,
-                                    fontSize: AppFont.md),
+                            Container(
+                              width: 75,
+                              height: 75,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.05),
+                                    blurRadius: 25,
+                                    offset: Offset(0.3, 0.4),
+                                    spreadRadius: 5,
+                                  ),
+                                ],
+                              ),
+                              child: Center(
+                                child: Text(
+                                  '2/12',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
-                          SizedBox(
-                            width: AppSpace.md,
-                          ),
-                          Text(
-                            'Pixi, or Pinokyo',
-                          ),
-                        ],
+                            IconButton(
+                              onPressed: () {},
+                              icon: Icon(Icons.chevron_right),
+                            ),
+                          ],
+                        ),
                       ),
                     )
                   ],
