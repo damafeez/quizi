@@ -1,5 +1,3 @@
-
-
 import 'dart:math';
 
 int randomIntegerFromRange(int min, int max) {

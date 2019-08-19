@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:html_unescape/html_unescape.dart';
 import 'package:http/http.dart' as http;
 import 'package:quiz/data/models/category.dart';
 import 'package:quiz/data/models/question.dart';
@@ -27,14 +28,38 @@ class _QuestionsState extends State<Questions> {
   final String baseURL = 'https://opentdb.com/api.php';
   final List<String> alphabets = ['A', 'B', 'C', 'D', 'E', 'F'];
   final List<Question> questions = [];
-  List<Category> categories = [];
+  int currentQuestionIndex = 0;
+  HtmlUnescape unescape;
 
-  @override
-  void initState() {
-    categories = widget.categories.toList();
+  Question get question {
+    try {
+      return questions[currentQuestionIndex];
+    } on RangeError {
+      return null;
+    }
+  }
+
+  void selectAnswer(int index) {
+    setState(() {
+      question.setSelectedIndex(index);
+    });
+  }
+
+  Function buildNextCallback() {
+    if ((widget.timerType == TimerType.interval &&
+            question?.selectedIndex == null) ||
+        (currentQuestionIndex >= questionsCount - 1)) return null;
+    return () {
+      setState(() {
+        currentQuestionIndex++;
+      });
+    };
+  }
+
+  void fetchQuestions() {
     final int questionCountPerCall =
         (questionsCount / widget.categories.length).floor();
-    for (final Category category in categories) {
+    for (final Category category in widget.categories) {
       http
           .get(
               '$baseURL?amount=$questionCountPerCall&category=${category.id}&difficulty=easy')
@@ -47,13 +72,17 @@ class _QuestionsState extends State<Questions> {
         }
       });
     }
+  }
+
+  @override
+  void initState() {
+    fetchQuestions();
+    unescape = HtmlUnescape();
     super.initState();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (questions.length == 0) return Container();
-    Question question = questions[0];
     return Scaffold(
       body: DefaultTextStyle(
         style: TextStyle(color: secondaryText, fontFamily: 'Comfortaa'),
@@ -83,26 +112,63 @@ class _QuestionsState extends State<Questions> {
                     SizedBox(
                       height: AppSpace.md,
                     ),
-                    Text(
-                      question.question,
-                      style: TextStyle(
-                          fontSize: AppFont.md, fontWeight: FontWeight.bold),
+                    ConstrainedBox(
+                      constraints: BoxConstraints(minHeight: 450),
+                      child: question == null
+                          ? Center(
+                              child: CircularProgressIndicator(),
+                            )
+                          : Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                Text(
+                                  unescape.convert(question.question),
+                                  style: TextStyle(
+                                    fontSize: AppFont.md,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                SizedBox(
+                                  height: AppSpace.lg,
+                                ),
+                                for (int i = 0;
+                                    i < question.answers.length;
+                                    i++)
+                                  AnswerChip(
+                                    alphabet: alphabets[i],
+                                    answer: '${unescape.convert(question.answers[i])}',
+                                    // isCorrect: question.correctIndex == i,
+                                    onTap: () => selectAnswer(i),
+                                    answerState: (() {
+                                      if (question.selectedIndex != null) {
+                                        if (question.selectedIndex !=
+                                                question.correctIndex &&
+                                            question.selectedIndex == i)
+                                          return AnswerState.isWrong;
+                                        if (question.correctIndex == i)
+                                          return AnswerState.isCorrect;
+                                      }
+
+                                      return AnswerState.initial;
+                                    })(),
+                                    isSelected: question.selectedIndex == i,
+                                  ),
+                              ],
+                            ),
                     ),
-                    SizedBox(
-                      height: AppSpace.lg,
-                    ),
-                    for (int i = 0; i < question.answers.length; i++)
-                      AnswerChip(
-                        alphabet: alphabets[i],
-                        answer: question.answers[i],
-                      ),
                     Expanded(
                       child: Center(
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: <Widget>[
                             IconButton(
-                              onPressed: () {},
+                              onPressed: currentQuestionIndex > 0
+                                  ? () {
+                                      setState(() {
+                                        currentQuestionIndex--;
+                                      });
+                                    }
+                                  : null,
                               icon: Icon(Icons.chevron_left),
                             ),
                             Container(
@@ -122,7 +188,7 @@ class _QuestionsState extends State<Questions> {
                               ),
                               child: Center(
                                 child: Text(
-                                  '2/12',
+                                  '${currentQuestionIndex + 1}/$questionsCount',
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -130,7 +196,7 @@ class _QuestionsState extends State<Questions> {
                               ),
                             ),
                             IconButton(
-                              onPressed: () {},
+                              onPressed: buildNextCallback(),
                               icon: Icon(Icons.chevron_right),
                             ),
                           ],

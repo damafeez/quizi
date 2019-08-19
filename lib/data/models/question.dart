@@ -10,6 +10,7 @@ class Question {
   final String category;
   int _correctIndex;
   List<String> _answers;
+  int _selectedIndex;
 
   Question({
     @required this.question,
@@ -28,13 +29,17 @@ class Question {
   }
 
   void _setAnswers() {
-    _correctIndex = randomIntegerFromRange(0, wrongAnswers.length);
+    _correctIndex = randomIntegerFromRange(0, wrongAnswers.length + 1);
     _answers = wrongAnswers.map((answer) => answer.toString()).toList()
       ..shuffle(Random())
       ..insert(_correctIndex, rightAnswer);
   }
+  int get selectedIndex => _selectedIndex;
+  void setSelectedIndex(int index) {
+    if (_selectedIndex == null) _selectedIndex = index;
+  }
 
-  get answers {
+  List<String> get answers {
     if (_answers == null) _setAnswers();
     return _answers;
   }

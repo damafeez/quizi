@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:quiz/resources/sizes.dart';
 
@@ -7,12 +6,14 @@ class AnswerChip extends StatelessWidget {
   final bool isSelected;
   final String alphabet;
   final String answer;
+  final Function onTap;
   const AnswerChip({
     Key key,
     @required this.alphabet,
     @required this.answer,
     this.answerState = AnswerState.initial,
     this.isSelected = false,
+    this.onTap,
   }) : super(key: key);
 
   @override
@@ -32,38 +33,43 @@ class AnswerChip extends StatelessWidget {
           ),
         ],
       ),
-      child: Row(
-        children: <Widget>[
-          AnimatedContainer(
-            duration: Duration(milliseconds: 300),
-            width: 48,
-            height: 58,
-            decoration: BoxDecoration(
-              color: answerStateColor[answerState],
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Center(
-              child: Text(
-                alphabet,
-                style: TextStyle(
-                    color: answerState == AnswerState.initial
-                        ? null
-                        : Colors.white54,
-                    fontSize: AppFont.md),
+      child: InkWell(
+        onTap: onTap,
+        child: Row(
+          children: <Widget>[
+            Container(
+              width: 48,
+              height: 58,
+              decoration: BoxDecoration(
+                color: answerStateColor[answerState],
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Center(
+                child: Text(
+                  alphabet,
+                  style: TextStyle(
+                      color: answerState == AnswerState.initial
+                          ? null
+                          : Colors.white54,
+                      fontSize: AppFont.md),
+                ),
               ),
             ),
-          ),
-          SizedBox(
-            width: AppSpace.md,
-          ),
-          Text(
-            '$answer',
-          ),
-        ],
+            SizedBox(
+              width: AppSpace.md,
+            ),
+            Expanded(
+              child: Text(
+                '$answer',
+              ),
+            )
+          ],
+        ),
       ),
     );
   }
 }
+
 enum AnswerState { initial, isCorrect, isWrong }
 
 final Map<AnswerState, Color> answerStateColor = {
