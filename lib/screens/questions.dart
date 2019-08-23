@@ -1,14 +1,17 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:html_unescape/html_unescape.dart';
 import 'package:http/http.dart' as http;
+import 'package:toast/toast.dart';
 import 'package:quiz/data/models/category.dart';
 import 'package:quiz/data/models/question.dart';
 import 'package:quiz/resources/colors.dart';
 import 'package:quiz/resources/sizes.dart';
 import 'package:quiz/screens/home.dart';
+import 'package:quiz/screens/score.dart';
 import 'package:quiz/widgets/answer_chip.dart';
 
 class Questions extends StatefulWidget {
@@ -39,38 +42,65 @@ class _QuestionsState extends State<Questions> {
     }
   }
 
+  Timer nextTimer;
   void selectAnswer(int index) {
+    if (question.selectedIndex != null) return;
     setState(() {
       question.setSelectedIndex(index);
     });
+    nextTimer = Timer(Duration(seconds: 2), next);
+  }
+
+  void next() {
+    // TODO: this if-check is crude, should be refactored
+    if (currentQuestionIndex >= questions.length - 1 &&
+        currentQuestionIndex > 10) {
+      final int score = questions.where((question) {
+        return question.correctIndex == question.selectedIndex;
+      }).length;
+      Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (context) => Score(
+                    score: score,
+                    total: questions.length,
+                  )));
+    } else {
+      setState(() {
+        currentQuestionIndex++;
+      });
+    }
   }
 
   Function buildNextCallback() {
     if ((widget.timerType == TimerType.interval &&
-            question?.selectedIndex == null) ||
-        (currentQuestionIndex >= questionsCount - 1)) return null;
+        question?.selectedIndex == null)) return null;
     return () {
-      setState(() {
-        currentQuestionIndex++;
-      });
+      nextTimer?.cancel();
+      next();
     };
   }
 
-  void fetchQuestions() {
+  void fetchQuestions() async {
     final int questionCountPerCall =
         (questionsCount / widget.categories.length).floor();
     for (final Category category in widget.categories) {
-      http
-          .get(
-              '$baseURL?amount=$questionCountPerCall&category=${category.id}&difficulty=easy')
-          .then((response) {
+      try {
+        var response = await http.get(
+            '$baseURL?amount=$questionCountPerCall&category=${category.id}&difficulty=easy');
+
         List results = json.decode(response.body)['results'];
         for (final Map<String, dynamic> result in results) {
           setState(() {
             questions.add(Question.fromJson(result));
           });
         }
-      });
+      } catch (e) {
+        Toast.show(
+            'Error fetching questions, please check your internet connection',
+            context,
+            duration: 3);
+      }
     }
   }
 
@@ -136,7 +166,8 @@ class _QuestionsState extends State<Questions> {
                                     i++)
                                   AnswerChip(
                                     alphabet: alphabets[i],
-                                    answer: '${unescape.convert(question.answers[i])}',
+                                    answer:
+                                        '${unescape.convert(question.answers[i])}',
                                     // isCorrect: question.correctIndex == i,
                                     onTap: () => selectAnswer(i),
                                     answerState: (() {
@@ -164,6 +195,7 @@ class _QuestionsState extends State<Questions> {
                             IconButton(
                               onPressed: currentQuestionIndex > 0
                                   ? () {
+                                      nextTimer?.cancel();
                                       setState(() {
                                         currentQuestionIndex--;
                                       });

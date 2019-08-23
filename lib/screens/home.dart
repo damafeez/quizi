@@ -1,7 +1,7 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:quiz/data/fixtures/categories.dart';
+import 'package:quiz/data/fixtures/categories.dart' as fixture;
 import 'package:quiz/data/models/category.dart';
 import 'package:quiz/resources/colors.dart';
 import 'package:quiz/resources/sizes.dart';
@@ -15,7 +15,7 @@ class Home extends StatefulWidget {
 }
 
 class _HomeState extends State<Home> {
-  final int categoriesHalfIndex = (categories.length / 2).floor();
+  List<Category> categories = fixture.categories();
   final int categoriesLimit = 5;
   Color backgroundColor = Color(0xff0093cc);
   TimerType _timerType = TimerType.interval;
@@ -30,7 +30,9 @@ class _HomeState extends State<Home> {
       _timerType = type;
     });
   }
-
+  int get categoriesHalfIndex {
+    return (categories.length / 2).floor();
+  }
   List<Category> get selectedCategories {
     return categories.where((category) => category.isSelected).toList();
   }
